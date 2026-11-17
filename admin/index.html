@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>관리자 | 술술 일본어</title>
+<style>
+:root{--navy:#2d4a7c;--navy2:#1f3559;--ink:#17203a;--mut:#5d6882;--line:#e3e8f2;--bg:#f4f6fb}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;color:var(--ink);background:var(--bg);font-size:16px;line-height:1.5}
+.wrap{max-width:860px;margin:0 auto;padding:18px}
+h1{font-size:22px;margin:0;color:var(--navy2)}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.btn{font:inherit;font-weight:800;border:0;border-radius:12px;padding:10px 18px;background:var(--navy);color:#fff;cursor:pointer}
+.btn.light{background:#fff;color:var(--navy2);border:2px solid var(--line)}
+.btn.red{background:#fff;color:#b3261e;border:2px solid #f1c9c6}
+.card{background:#fff;border:2px solid var(--line);border-radius:18px;padding:18px}
+.login{max-width:380px;margin:12vh auto 0}
+input,select{font:inherit;width:100%;padding:12px 14px;border:2px solid var(--line);border-radius:12px;background:#fafbfd}
+input:focus,select:focus{outline:none;border-color:var(--navy)}
+.msg{margin-top:10px;font-weight:700;color:#c0262d}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tab{font:inherit;font-weight:800;border:2px solid var(--line);background:#fff;border-radius:999px;padding:6px 14px;cursor:pointer;color:var(--mut)}
+.tab.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.row{margin-bottom:12px}
+.top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;color:var(--mut);font-size:14px}
+.name{font-weight:900;font-size:18px;margin:6px 0 0}
+.contact{color:var(--navy);font-weight:700;word-break:break-all}
+.text{white-space:pre-wrap;word-break:break-word;margin:10px 0;background:var(--bg);border-radius:12px;padding:12px}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.acts select{width:auto}
+.s-신규{color:#b3261e}.s-상담중{color:#946200}.s-완료{color:#1b7a43}
+.empty{text-align:center;color:var(--mut);padding:40px 0}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+const app=document.getElementById('app');
+let rows=[],filter='전체';
+const api=(body)=>fetch('/api/admin',{method:body?'POST':'GET',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined,credentials:'same-origin'});
+const el=(t,p={},...c)=>{const e=document.createElement(t);Object.entries(p).forEach(([k,v])=>k==='class'?e.className=v:k.startsWith('on')?e.addEventListener(k.slice(2),v):e.setAttribute(k,v));c.flat().forEach(x=>e.append(x));return e};
+
+function loginView(err){
+  app.replaceChildren();
+  const pw=el('input',{type:'password',placeholder:'관리자 비밀번호',autocomplete:'current-password'});
+  const msg=el('div',{class:'msg'},err||'');
+  const go=async()=>{
+    msg.textContent='확인 중…';
+    const r=await api({action:'login',password:pw.value});
+    if(r.ok){load()}else{const j=await r.json().catch(()=>({}));msg.textContent=j.error||'로그인하지 못했어요.'}
+  };
+  pw.addEventListener('keydown',e=>{if(e.key==='Enter')go()});
+  app.append(el('div',{class:'card login'},el('h1',{},'관리자 로그인'),el('p',{style:'color:var(--mut)'},'술술 일본어 문의 관리'),pw,el('div',{style:'margin-top:12px'},el('button',{class:'btn',onclick:go},'로그인')),msg));
+  pw.focus();
+}
+
+async function load(){
+  const r=await api();
+  if(r.status===401){loginView();return}
+  const j=await r.json();
+  if(!r.ok){app.textContent=j.error||'불러오지 못했어요.';return}
+  rows=j.rows;render();
+}
+
+function render(){
+  app.replaceChildren();
+  const cnt=s=>rows.filter(x=>x.status===s).length;
+  const bar=el('div',{class:'bar'},el('h1',{},'문의 관리'),el('div',{class:'acts'},
+    el('button',{class:'btn light',onclick:load},'새로고침'),
+    el('button',{class:'btn light',onclick:async()=>{await api({action:'logout'});loginView()}},'로그아웃')));
+  const tabs=el('div',{class:'tabs'},['전체','신규','상담중','완료'].map(s=>
+    el('button',{class:'tab'+(filter===s?' on':''),onclick:()=>{filter=s;render()}},s+' '+(s==='전체'?rows.length:cnt(s)))));
+  app.append(bar,tabs);
+  const list=rows.filter(x=>filter==='전체'||x.status===filter);
+  if(!list.length){app.append(el('div',{class:'empty'},'문의가 없어요.'));return}
+  list.forEach(x=>{
+    const sel=el('select',{},['신규','상담중','완료'].map(s=>{const o=el('option',{value:s},s);if(s===x.status)o.selected=true;return o}));
+    sel.addEventListener('change',async()=>{
+      const r=await api({action:'status',id:x.id,status:sel.value});
+      if(r.ok){x.status=sel.value;render()}else{alert('상태를 바꾸지 못했어요.');load()}
+    });
+    const del=el('button',{class:'btn red',onclick:async()=>{
+      if(!confirm(x.name+'님의 문의를 삭제할까요? 되돌릴 수 없어요.'))return;
+      const r=await api({action:'delete',id:x.id});
+      if(r.ok){rows=rows.filter(y=>y.id!==x.id);render()}else alert('삭제하지 못했어요.');
+    }},'삭제');
+    const d=new Date(x.created_at);
+    app.append(el('div',{class:'card row'},
+      el('div',{class:'top'},el('span',{},d.toLocaleString('ko-KR')),el('b',{class:'s-'+x.status},x.status)),
+      el('div',{class:'name'},x.name),
+      el('div',{class:'contact'},x.contact),
+      el('div',{class:'text'},x.message),
+      el('div',{class:'acts'},sel,del)));
+  });
+}
+load();
+</script>
+</body>
+</html>
