@@ -50,7 +50,7 @@ export default async function handler(req, res) {
   });
   if (!ins.ok) {
     console.error('insert failed', ins.status, await ins.text());
-    return res.status(500).json({ error: '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.', debug: ins.status });
+    return res.status(500).json({ error: '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' });
   }
 
   // 알림 메일 (실패해도 문의 저장은 이미 끝났으니 성공 처리)
