@@ -48,7 +48,10 @@ export default async function handler(req, res) {
     headers: { ...H, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
     body: JSON.stringify(row),
   });
-  if (!ins.ok) return res.status(500).json({ error: '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.' });
+  if (!ins.ok) {
+    console.error('insert failed', ins.status, await ins.text());
+    return res.status(500).json({ error: '저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.', debug: ins.status });
+  }
 
   // 알림 메일 (실패해도 문의 저장은 이미 끝났으니 성공 처리)
   if (RESEND_API_KEY && NOTIFY_EMAIL) {
