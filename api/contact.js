@@ -30,7 +30,9 @@ export default async function handler(req, res) {
   if (name.length > LIMITS.name || contact.length > LIMITS.contact || message.length > LIMITS.message)
     return res.status(400).json({ error: '글자 수가 너무 많아요.' });
 
-  const H = { apikey: SUPABASE_SERVICE_KEY, Authorization: `Bearer ${SUPABASE_SERVICE_KEY}` };
+  // 새 형식 비밀 열쇠(sb_secret_...)는 apikey 머리말로만 보내요. 옛 형식(eyJ...)만 Authorization도 필요해요.
+  const H = { apikey: SUPABASE_SERVICE_KEY };
+  if (SUPABASE_SERVICE_KEY.startsWith('eyJ')) H.Authorization = `Bearer ${SUPABASE_SERVICE_KEY}`;
 
   // 하루 접수 한도
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
